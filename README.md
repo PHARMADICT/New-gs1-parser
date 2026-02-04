@@ -163,6 +163,6 @@ MIT License - Free for personal and commercial use.
 - Font: Outfit & JetBrains Mono (Google Fonts)
 - Inspired by Orca Scan and GS1 standards
 
---- THE master CLAUDE helped
+---
 
-Made with ❤️ for healthcare and inventory professional who need reliable offline barcode scanning.
+Made with ❤️ for healthcare and inventory professionals who need reliable offline barcode scanning.
