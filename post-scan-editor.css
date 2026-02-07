@@ -1,0 +1,426 @@
+/* Post-Scan Editor Styles */
+
+.post-scan-modal .modal-content {
+    max-width: 900px;
+    max-height: 95vh;
+    overflow-y: auto;
+}
+
+.editor-wide {
+    width: 95% !important;
+}
+
+/* Scan Info Banner */
+.scan-info-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.scan-time, .original-gtin {
+    font-size: 0.9rem;
+}
+
+.original-gtin strong {
+    font-family: monospace;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* Form Sections */
+.form-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.form-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 10px;
+}
+
+.highlight-section {
+    border: 2px solid var(--primary-color);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* GTIN Edit Wrapper */
+.gtin-edit-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.gtin-edit-wrapper input {
+    flex: 1;
+    font-family: monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.gtin-actions {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.btn-icon {
+    background: white;
+    border: 2px solid #e9ecef;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.btn-icon:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.validation-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.validation-badge.valid {
+    background: #d4edda;
+    color: #155724;
+}
+
+.validation-badge.invalid {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.validation-badge.warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* Warning/Error Boxes */
+.warning-box {
+    background: #fff3cd;
+    border-left: 4px solid var(--warning-color);
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 6px;
+    color: #856404;
+    font-weight: 500;
+}
+
+.error-box {
+    background: #f8d7da;
+    border-left: 4px solid var(--danger-color);
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 6px;
+    color: #721c24;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: #0056b3;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0;
+    margin-left: 5px;
+}
+
+.btn-link:hover {
+    color: #003d82;
+}
+
+/* Form Row */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Similarity Matches */
+.similarity-matches {
+    margin-top: 10px;
+}
+
+.similarity-header {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.similarity-item {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.similarity-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.similarity-info strong {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--dark-text);
+}
+
+.similarity-info small {
+    color: var(--secondary-color);
+    font-size: 0.85rem;
+}
+
+.similarity-score {
+    background: var(--primary-color);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Batch History */
+.batch-history {
+    margin-top: 8px;
+    padding: 10px;
+    background: white;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+/* Expiry Calculation */
+.expiry-calc {
+    margin-top: 8px;
+}
+
+.success-text {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+/* Quick Actions Section */
+.quick-actions-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.quick-actions-section h4 {
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.quick-action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.btn-quick {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.btn-quick:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+/* Update Summary */
+.update-summary {
+    background: #d4edda;
+    border-left: 4px solid var(--success-color);
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+.update-summary h4 {
+    color: #155724;
+    margin-bottom: 10px;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 2px solid #e9ecef;
+}
+
+.btn-large {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+}
+
+/* Toast Messages */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 100000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    background: var(--success-color);
+}
+
+.toast-error {
+    background: var(--danger-color);
+}
+
+.toast-warning {
+    background: var(--warning-color);
+    color: #000;
+}
+
+.toast-info {
+    background: var(--primary-color);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .post-scan-modal .modal-content {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-action-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .scan-info-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .gtin-edit-wrapper {
+        flex-wrap: wrap;
+    }
+    
+    .gtin-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+    
+    .similarity-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .post-scan-modal {
+        display: none !important;
+    }
+}
+
+/* Accessibility */
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Loading State */
+.form-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.form-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Animation for GTIN change */
+@keyframes highlightChange {
+    0%, 100% {
+        background: transparent;
+    }
+    50% {
+        background: #fff3cd;
+    }
+}
+
+.gtin-changed {
+    animation: highlightChange 1s ease-in-out;
+}
