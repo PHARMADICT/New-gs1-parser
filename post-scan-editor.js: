@@ -1,0 +1,789 @@
+// Enhanced Post-Scan Editor
+// Allows editing EVERYTHING after scanning including GTIN, batch, expiry
+// With fuzzy matching and smart suggestions
+
+import { localDB } from './product-api.js';
+
+class PostScanEditor {
+  constructor() {
+    this.currentScan = null;
+    this.originalGTIN = null;
+    this.suggestions = [];
+  }
+
+  // Open editor immediately after scan
+  async openEditor(scanData) {
+    this.currentScan = scanData;
+    this.originalGTIN = scanData.gtin;
+    
+    const modal = this.createEditorModal();
+    document.body.appendChild(modal);
+    
+    await this.loadDataIntoForm(scanData);
+    this.setupEditorListeners();
+    
+    modal.style.display = 'flex';
+    
+    // Auto-focus first editable field
+    setTimeout(() => {
+      document.getElementById('post-scan-gtin').focus();
+      document.getElementById('post-scan-gtin').select();
+    }, 100);
+  }
+
+  createEditorModal() {
+    const modal = document.createElement('div');
+    modal.id = 'post-scan-editor';
+    modal.className = 'modal post-scan-modal';
+    modal.innerHTML = `
+      <div class="modal-content editor-wide">
+        <div class="modal-header">
+          <h2>✏️ Edit Scanned Product</h2>
+          <button class="modal-close" id="close-post-scan">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="scan-info-banner">
+            <span class="scan-time">⏰ Scanned: <span id="scan-timestamp"></span></span>
+            <span class="original-gtin">📊 Original GTIN: <strong id="original-gtin-display"></strong></span>
+          </div>
+
+          <form id="post-scan-form">
+            <!-- GTIN Editing Section -->
+            <div class="form-section highlight-section">
+              <h3>🔢 Barcode / GTIN</h3>
+              <div class="form-group">
+                <label for="post-scan-gtin">
+                  GTIN (Barcode Number) <span class="required">*</span>
+                  <span class="help-text">Change if scanned wrong barcode</span>
+                </label>
+                <div class="gtin-edit-wrapper">
+                  <input 
+                    type="text" 
+                    id="post-scan-gtin" 
+                    name="gtin"
+                    pattern="[0-9]{8,14}"
+                    maxlength="14"
+                    required
+                  >
+                  <div class="gtin-actions">
+                    <button type="button" class="btn-icon" id="copy-gtin" title="Copy GTIN">
+                      📋
+                    </button>
+                    <button type="button" class="btn-icon" id="reset-gtin" title="Reset to original">
+                      🔄
+                    </button>
+                    <span class="validation-badge" id="gtin-validation"></span>
+                  </div>
+                </div>
+                <div id="gtin-change-warning" class="warning-box" style="display: none;">
+                  ⚠️ You're changing the GTIN! This will create/update a different product in the database.
+                </div>
+                <div id="duplicate-gtin-warning" class="error-box" style="display: none;">
+                  🚫 This GTIN already exists in database. 
+                  <button type="button" class="btn-link" id="load-existing-gtin">Load existing product</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Information -->
+            <div class="form-section">
+              <h3>📦 Product Information</h3>
+              
+              <div class="form-group">
+                <label for="post-scan-name">
+                  Product Name <span class="required">*</span>
+                </label>
+                <div class="autocomplete-wrapper">
+                  <input 
+                    type="text" 
+                    id="post-scan-name" 
+                    name="name"
+                    required
+                    autocomplete="off"
+                  >
+                  <div class="autocomplete-suggestions" id="name-suggestions-post"></div>
+                </div>
+                <div class="similarity-matches" id="name-similarity"></div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="post-scan-brand">Brand</label>
+                  <div class="autocomplete-wrapper">
+                    <input 
+                      type="text" 
+                      id="post-scan-brand" 
+                      name="brand"
+                      autocomplete="off"
+                    >
+                    <div class="autocomplete-suggestions" id="brand-suggestions-post"></div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="post-scan-category">Category</label>
+                  <input 
+                    type="text" 
+                    id="post-scan-category" 
+                    name="category"
+                    list="category-list"
+                  >
+                  <datalist id="category-list">
+                    <option value="Dairy">
+                    <option value="Bakery">
+                    <option value="Beverages">
+                    <option value="Pharmaceutical">
+                    <option value="Meat & Seafood">
+                    <option value="Fruits & Vegetables">
+                  </datalist>
+                </div>
+              </div>
+            </div>
+
+            <!-- Batch & Expiry Section -->
+            <div class="form-section highlight-section">
+              <h3>📅 Batch & Expiry Information</h3>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="post-scan-batch">
+                    Batch / Lot Number
+                    <span class="help-text">Update for new production batch</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    id="post-scan-batch" 
+                    name="batch"
+                    placeholder="e.g., LOT123456"
+                  >
+                  <div class="batch-history" id="batch-history"></div>
+                </div>
+
+                <div class="form-group">
+                  <label for="post-scan-expiry">
+                    Expiry Date
+                    <span class="help-text">Best before / Use by date</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    id="post-scan-expiry" 
+                    name="expiry"
+                  >
+                  <div class="expiry-calc" id="expiry-calc"></div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="post-scan-mfg-date">Manufacturing Date</label>
+                  <input 
+                    type="date" 
+                    id="post-scan-mfg-date" 
+                    name="mfgDate"
+                  >
+                </div>
+
+                <div class="form-group">
+                  <label for="post-scan-shelf-life">Shelf Life (Days)</label>
+                  <input 
+                    type="number" 
+                    id="post-scan-shelf-life" 
+                    name="shelfLife"
+                    min="0"
+                    placeholder="Auto-calculated"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Details -->
+            <div class="form-section">
+              <h3>📝 Additional Details</h3>
+              
+              <div class="form-group">
+                <label for="post-scan-manufacturer">Manufacturer</label>
+                <input type="text" id="post-scan-manufacturer" name="manufacturer">
+              </div>
+
+              <div class="form-group">
+                <label for="post-scan-description">Description</label>
+                <textarea id="post-scan-description" name="description" rows="2"></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="post-scan-quantity">Quantity</label>
+                  <input type="text" id="post-scan-quantity" name="quantity" placeholder="e.g., 500ml, 1kg">
+                </div>
+
+                <div class="form-group">
+                  <label for="post-scan-price">Price</label>
+                  <input type="text" id="post-scan-price" name="price" placeholder="e.g., 19.99">
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions-section">
+              <h4>⚡ Quick Actions</h4>
+              <div class="quick-action-buttons">
+                <button type="button" class="btn-quick" id="quick-update-batch">
+                  🔄 Update Batch Only
+                </button>
+                <button type="button" class="btn-quick" id="quick-update-expiry">
+                  📅 Update Expiry Only
+                </button>
+                <button type="button" class="btn-quick" id="quick-copy-product">
+                  📋 Copy to New GTIN
+                </button>
+                <button type="button" class="btn-quick" id="quick-mark-expired">
+                  ⚠️ Mark as Expired
+                </button>
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-large">
+                💾 Save Changes
+              </button>
+              <button type="button" class="btn btn-secondary" id="cancel-post-scan">
+                Cancel
+              </button>
+              <button type="button" class="btn btn-danger" id="delete-post-scan" style="display: none;">
+                🗑️ Delete Product
+              </button>
+            </div>
+
+            <!-- Update Summary -->
+            <div id="update-summary" class="update-summary" style="display: none;"></div>
+          </form>
+        </div>
+      </div>
+    `;
+    
+    return modal;
+  }
+
+  async loadDataIntoForm(scanData) {
+    // Display scan time
+    document.getElementById('scan-timestamp').textContent = new Date().toLocaleString();
+    document.getElementById('original-gtin-display').textContent = scanData.gtin;
+
+    // Try to get existing product data
+    let productData = null;
+    try {
+      productData = await localDB.getProduct(scanData.gtin);
+    } catch (error) {
+      console.log('No existing product data');
+    }
+
+    // Fill GTIN
+    document.getElementById('post-scan-gtin').value = scanData.gtin;
+
+    if (productData) {
+      // Load existing product data
+      document.getElementById('post-scan-name').value = productData.name || '';
+      document.getElementById('post-scan-brand').value = productData.brand || '';
+      document.getElementById('post-scan-category').value = productData.category || '';
+      document.getElementById('post-scan-batch').value = productData.batch || '';
+      document.getElementById('post-scan-expiry').value = productData.expiry || '';
+      document.getElementById('post-scan-mfg-date').value = productData.mfgDate || '';
+      document.getElementById('post-scan-manufacturer').value = productData.manufacturer || '';
+      document.getElementById('post-scan-description').value = productData.description || '';
+      document.getElementById('post-scan-quantity').value = productData.quantity || '';
+      document.getElementById('post-scan-price').value = productData.price || '';
+      document.getElementById('post-scan-shelf-life').value = productData.shelfLife || '';
+      
+      // Show delete button for existing products
+      document.getElementById('delete-post-scan').style.display = 'inline-block';
+      
+      // Load batch history
+      await this.loadBatchHistory(scanData.gtin);
+    } else {
+      // Try to extract info from GS1 data
+      if (scanData.parsedData) {
+        const batchData = scanData.parsedData.find(item => item.ai === '10');
+        const expiryData = scanData.parsedData.find(item => ['15', '17'].includes(item.ai));
+        const prodDateData = scanData.parsedData.find(item => item.ai === '11');
+        
+        if (batchData) document.getElementById('post-scan-batch').value = batchData.value;
+        if (expiryData) document.getElementById('post-scan-expiry').value = this.parseGS1Date(expiryData.value);
+        if (prodDateData) document.getElementById('post-scan-mfg-date').value = this.parseGS1Date(prodDateData.value);
+      }
+    }
+    
+    // Trigger validation
+    this.validateGTIN(scanData.gtin);
+  }
+
+  setupEditorListeners() {
+    const form = document.getElementById('post-scan-form');
+    const gtinInput = document.getElementById('post-scan-gtin');
+    const nameInput = document.getElementById('post-scan-name');
+    const batchInput = document.getElementById('post-scan-batch');
+    const expiryInput = document.getElementById('post-scan-expiry');
+    const mfgInput = document.getElementById('post-scan-mfg-date');
+    const shelfLifeInput = document.getElementById('post-scan-shelf-life');
+
+    // Form submission
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleSave();
+    });
+
+    // Close buttons
+    document.getElementById('close-post-scan').addEventListener('click', () => this.closeEditor());
+    document.getElementById('cancel-post-scan').addEventListener('click', () => this.closeEditor());
+
+    // GTIN validation and change detection
+    gtinInput.addEventListener('input', async (e) => {
+      const newGTIN = e.target.value;
+      this.validateGTIN(newGTIN);
+      
+      if (newGTIN !== this.originalGTIN && newGTIN.length >= 8) {
+        document.getElementById('gtin-change-warning').style.display = 'block';
+        await this.checkDuplicateGTIN(newGTIN);
+      } else {
+        document.getElementById('gtin-change-warning').style.display = 'none';
+        document.getElementById('duplicate-gtin-warning').style.display = 'none';
+      }
+    });
+
+    // Copy GTIN
+    document.getElementById('copy-gtin').addEventListener('click', () => {
+      gtinInput.select();
+      document.execCommand('copy');
+      this.showToast('GTIN copied!', 'success');
+    });
+
+    // Reset GTIN
+    document.getElementById('reset-gtin').addEventListener('click', () => {
+      gtinInput.value = this.originalGTIN;
+      document.getElementById('gtin-change-warning').style.display = 'none';
+      this.validateGTIN(this.originalGTIN);
+    });
+
+    // Fuzzy name matching
+    nameInput.addEventListener('input', () => {
+      this.fuzzyMatchName(nameInput.value);
+    });
+
+    // Batch input
+    batchInput.addEventListener('input', () => {
+      this.suggestBatchFormat(batchInput.value);
+    });
+
+    // Expiry calculations
+    expiryInput.addEventListener('change', () => {
+      this.calculateShelfLife(mfgInput.value, expiryInput.value);
+    });
+
+    mfgInput.addEventListener('change', () => {
+      this.calculateShelfLife(mfgInput.value, expiryInput.value);
+    });
+
+    shelfLifeInput.addEventListener('change', () => {
+      if (mfgInput.value && shelfLifeInput.value) {
+        this.calculateExpiryFromShelfLife(mfgInput.value, parseInt(shelfLifeInput.value));
+      }
+    });
+
+    // Quick action buttons
+    document.getElementById('quick-update-batch').addEventListener('click', () => {
+      this.quickUpdateBatchOnly();
+    });
+
+    document.getElementById('quick-update-expiry').addEventListener('click', () => {
+      this.quickUpdateExpiryOnly();
+    });
+
+    document.getElementById('quick-copy-product').addEventListener('click', () => {
+      this.quickCopyToNewGTIN();
+    });
+
+    document.getElementById('quick-mark-expired').addEventListener('click', () => {
+      this.quickMarkExpired();
+    });
+
+    // Delete button
+    const deleteBtn = document.getElementById('delete-post-scan');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => this.handleDelete());
+    }
+  }
+
+  validateGTIN(gtin) {
+    const badge = document.getElementById('gtin-validation');
+    
+    if (!gtin) {
+      badge.textContent = '';
+      badge.className = 'validation-badge';
+      return false;
+    }
+
+    const validLengths = [8, 12, 13, 14];
+    const isNumeric = /^\d+$/.test(gtin);
+    const isValidLength = validLengths.includes(gtin.length);
+
+    if (isNumeric && isValidLength) {
+      badge.textContent = '✓ Valid';
+      badge.className = 'validation-badge valid';
+      return true;
+    } else if (isNumeric) {
+      badge.textContent = '⚠ Wrong length';
+      badge.className = 'validation-badge warning';
+      return false;
+    } else {
+      badge.textContent = '✗ Invalid';
+      badge.className = 'validation-badge invalid';
+      return false;
+    }
+  }
+
+  async checkDuplicateGTIN(gtin) {
+    try {
+      const existing = await localDB.getProduct(gtin);
+      if (existing && gtin !== this.originalGTIN) {
+        document.getElementById('duplicate-gtin-warning').style.display = 'block';
+        
+        // Setup load button
+        document.getElementById('load-existing-gtin').onclick = async () => {
+          await this.loadDataIntoForm({ gtin: gtin, parsedData: null });
+          this.originalGTIN = gtin;
+          document.getElementById('duplicate-gtin-warning').style.display = 'none';
+          this.showToast('Loaded existing product data', 'info');
+        };
+      } else {
+        document.getElementById('duplicate-gtin-warning').style.display = 'none';
+      }
+    } catch (error) {
+      document.getElementById('duplicate-gtin-warning').style.display = 'none';
+    }
+  }
+
+  async fuzzyMatchName(input) {
+    if (input.length < 2) {
+      document.getElementById('name-similarity').innerHTML = '';
+      return;
+    }
+
+    // Get all products
+    await localDB.init();
+    const db = localDB.db;
+    const transaction = db.transaction(['products'], 'readonly');
+    const store = transaction.objectStore('products');
+    const allProducts = await new Promise(resolve => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve([]);
+    });
+
+    // Calculate similarity
+    const matches = allProducts
+      .map(product => ({
+        ...product,
+        similarity: this.calculateSimilarity(input.toLowerCase(), product.name.toLowerCase())
+      }))
+      .filter(p => p.similarity >= 0.6) // 60% or more similarity
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 5);
+
+    this.displaySimilarityMatches(matches);
+  }
+
+  calculateSimilarity(str1, str2) {
+    // Levenshtein distance for similarity
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const editDistance = this.levenshteinDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+  }
+
+  levenshteinDistance(str1, str2) {
+    const matrix = [];
+
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+
+    return matrix[str2.length][str1.length];
+  }
+
+  displaySimilarityMatches(matches) {
+    const container = document.getElementById('name-similarity');
+    
+    if (matches.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="similarity-header">💡 Similar products (${matches[0].similarity >= 0.8 ? 'High' : 'Moderate'} match):</div>
+      ${matches.map(match => `
+        <div class="similarity-item" onclick="window.loadSimilarProduct('${match.gtin}')">
+          <div class="similarity-info">
+            <strong>${match.name}</strong>
+            <small>${match.brand || 'No brand'} • GTIN: ${match.gtin}</small>
+          </div>
+          <div class="similarity-score">${Math.round(match.similarity * 100)}%</div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  async loadBatchHistory(gtin) {
+    // Show previous batches for this GTIN
+    const container = document.getElementById('batch-history');
+    
+    // In a real implementation, you'd store batch history
+    // For now, show placeholder
+    container.innerHTML = `
+      <small class="help-text">Previous batches for this product will appear here</small>
+    `;
+  }
+
+  calculateShelfLife(mfgDate, expiryDate) {
+    if (!mfgDate || !expiryDate) return;
+
+    const mfg = new Date(mfgDate);
+    const exp = new Date(expiryDate);
+    const diffTime = Math.abs(exp - mfg);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    document.getElementById('post-scan-shelf-life').value = diffDays;
+    
+    const calcDiv = document.getElementById('expiry-calc');
+    calcDiv.innerHTML = `<small class="success-text">✓ Shelf life: ${diffDays} days</small>`;
+  }
+
+  calculateExpiryFromShelfLife(mfgDate, shelfLifeDays) {
+    if (!mfgDate || !shelfLifeDays) return;
+
+    const mfg = new Date(mfgDate);
+    mfg.setDate(mfg.getDate() + shelfLifeDays);
+    
+    const expiryFormatted = mfg.toISOString().split('T')[0];
+    document.getElementById('post-scan-expiry').value = expiryFormatted;
+    
+    const calcDiv = document.getElementById('expiry-calc');
+    calcDiv.innerHTML = `<small class="success-text">✓ Calculated expiry: ${expiryFormatted}</small>`;
+  }
+
+  suggestBatchFormat(input) {
+    // Suggest common batch formats
+    if (input.length < 2) return;
+    
+    const suggestions = [];
+    
+    // LOT + number
+    if (!input.toUpperCase().startsWith('LOT')) {
+      suggestions.push(`LOT${input}`);
+    }
+    
+    // Add date
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+    if (!input.includes(dateStr)) {
+      suggestions.push(`${input}-${dateStr}`);
+    }
+    
+    // Show suggestions (you can enhance this)
+  }
+
+  parseGS1Date(gs1Date) {
+    // Convert YYMMDD to YYYY-MM-DD
+    if (gs1Date.length === 6) {
+      const yy = gs1Date.substring(0, 2);
+      const mm = gs1Date.substring(2, 4);
+      const dd = gs1Date.substring(4, 6);
+      const year = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
+      return `${year}-${mm}-${dd}`;
+    }
+    return '';
+  }
+
+  async handleSave() {
+    const form = document.getElementById('post-scan-form');
+    const formData = new FormData(form);
+    
+    const newGTIN = formData.get('gtin');
+    const gtinChanged = newGTIN !== this.originalGTIN;
+    
+    const productData = {
+      gtin: newGTIN,
+      name: formData.get('name'),
+      brand: formData.get('brand') || null,
+      category: formData.get('category') || null,
+      batch: formData.get('batch') || null,
+      expiry: formData.get('expiry') || null,
+      mfgDate: formData.get('mfgDate') || null,
+      shelfLife: formData.get('shelfLife') || null,
+      manufacturer: formData.get('manufacturer') || null,
+      description: formData.get('description') || null,
+      quantity: formData.get('quantity') || null,
+      price: formData.get('price') || null,
+      source: 'Manual Edit',
+      lastUpdated: new Date().toISOString()
+    };
+
+    try {
+      // Save to database
+      await localDB.saveProduct(productData);
+      
+      // If GTIN changed, delete old entry
+      if (gtinChanged && this.originalGTIN !== newGTIN) {
+        try {
+          await localDB.init();
+          const db = localDB.db;
+          const transaction = db.transaction(['products'], 'readwrite');
+          const store = transaction.objectStore('products');
+          await store.delete(this.originalGTIN);
+          
+          this.showToast(`✅ Product moved from ${this.originalGTIN} to ${newGTIN}`, 'success');
+        } catch (error) {
+          console.error('Error deleting old GTIN:', error);
+        }
+      } else {
+        this.showToast('✅ Product updated successfully!', 'success');
+      }
+      
+      // Close editor
+      this.closeEditor();
+      
+      // Refresh display if function exists
+      if (window.refreshCurrentProduct) {
+        window.refreshCurrentProduct(newGTIN);
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      this.showToast('❌ Failed to save: ' + error.message, 'error');
+    }
+  }
+
+  async handleDelete() {
+    if (!confirm(`Delete this product?\n\nGTIN: ${this.originalGTIN}\n\nThis cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await localDB.init();
+      const db = localDB.db;
+      const transaction = db.transaction(['products'], 'readwrite');
+      const store = transaction.objectStore('products');
+      await store.delete(this.originalGTIN);
+      
+      this.showToast('🗑️ Product deleted', 'success');
+      this.closeEditor();
+    } catch (error) {
+      this.showToast('❌ Delete failed: ' + error.message, 'error');
+    }
+  }
+
+  // Quick action methods
+  quickUpdateBatchOnly() {
+    const batch = document.getElementById('post-scan-batch').value;
+    if (!batch) {
+      this.showToast('⚠️ Enter a batch number first', 'warning');
+      document.getElementById('post-scan-batch').focus();
+      return;
+    }
+    
+    // Save only batch
+    this.handleSave();
+  }
+
+  quickUpdateExpiryOnly() {
+    const expiry = document.getElementById('post-scan-expiry').value;
+    if (!expiry) {
+      this.showToast('⚠️ Select an expiry date first', 'warning');
+      document.getElementById('post-scan-expiry').focus();
+      return;
+    }
+    
+    // Save only expiry
+    this.handleSave();
+  }
+
+  quickCopyToNewGTIN() {
+    const currentGTIN = document.getElementById('post-scan-gtin').value;
+    const newGTIN = prompt('Enter new GTIN for this product copy:', '');
+    
+    if (newGTIN && newGTIN !== currentGTIN) {
+      document.getElementById('post-scan-gtin').value = newGTIN;
+      this.validateGTIN(newGTIN);
+      this.showToast('💡 GTIN changed. Review and save.', 'info');
+    }
+  }
+
+  quickMarkExpired() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('post-scan-expiry').value = today;
+    this.showToast('⚠️ Marked with today\'s date. Save to confirm.', 'warning');
+  }
+
+  closeEditor() {
+    const modal = document.getElementById('post-scan-editor');
+    if (modal) {
+      modal.style.opacity = '0';
+      setTimeout(() => modal.remove(), 300);
+    }
+  }
+
+  showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+}
+
+// Global instance
+const postScanEditor = new PostScanEditor();
+
+// Make available globally
+window.openPostScanEditor = (scanData) => {
+  postScanEditor.openEditor(scanData);
+};
+
+window.loadSimilarProduct = async (gtin) => {
+  const product = await localDB.getProduct(gtin);
+  if (product) {
+    // Fill form with this product's data
+    document.getElementById('post-scan-name').value = product.name;
+    document.getElementById('post-scan-brand').value = product.brand || '';
+    document.getElementById('post-scan-category').value = product.category || '';
+    document.getElementById('post-scan-manufacturer').value = product.manufacturer || '';
+    postScanEditor.showToast('✅ Loaded similar product data', 'success');
+  }
+};
+
+export { postScanEditor, PostScanEditor };
