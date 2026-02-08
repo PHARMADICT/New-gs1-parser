@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="GS1 Barcode Parser - Offline-first PWA for scanning and managing GS1 barcodes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GS1 Parser">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>GS1 Parser</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- ZXing Library for barcode scanning -->
+  <script src="https://unpkg.com/@aspect-build/aspect-workflows-reporter@6.6.0/node_modules/@aspect-build/aspect-workflows-reporter/dist/index.js" defer></script>
+  <script src="https://unpkg.com/@aspect-build/aspect-workflows-reporter@6.6.0/node_modules/@aspect-build/aspect-workflows-reporter/dist/index.js" defer></script>
+  
+  <style>
+    :root {
+      /* Color System - Refined Industrial */
+      --bg-deep: #0a0e14;
+      --bg-surface: #0f1419;
+      --bg-elevated: #161d26;
+      --bg-hover: #1c2530;
+      --bg-active: #232d3b;
+      
+      --border-subtle: rgba(56, 68, 86, 0.5);
+      --border-default: rgba(56, 68, 86, 0.8);
+      --border-strong: #384456;
+      
+      --text-primary: #e8edf4;
+      --text-secondary: #8b9eb3;
+      --text-muted: #5d6f84;
+      
+      --accent-primary: #3b82f6;
+      --accent-primary-hover: #2563eb;
+      --accent-glow: rgba(59, 130, 246, 0.2);
+      
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --info: #6366f1;
+      --info-bg: rgba(99, 102, 241, 0.12);
+      
+      /* Typography */
+      --font-display: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      /* Spacing */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      --space-2xl: 48px;
+      
+      /* Borders */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+      
+      /* Transitions */
+      --transition-fast: 150ms ease;
+      --transition-default: 250ms ease;
+      --transition-slow: 400ms ease;
+      
+      /* Shadows */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 20px var(--accent-glow);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--font-display);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-surface);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: var(--radius-full);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* App Container */
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: var(--space-md) var(--space-lg);
+      backdrop-filter: blur(12px);
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--info));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text span {
+      color: var(--accent-primary);
+    }
+
+    .status-indicators {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .status-badge.online {
+      color: var(--success);
+      border-color: var(--success);
+      background: var(--success-bg);
+    }
+
+    .status-badge.offline {
+      color: var(--warning);
+      border-color: var(--warning);
+      background: var(--warning-bg);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: var(--space-xs);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .nav-tab.active {
+      background: var(--bg-elevated);
+      border-color: var(--border-default);
+      color: var(--text-primary);
+    }
+
+    .nav-tab svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .tab-badge {
+      padding: 2px 6px;
+      background: var(--accent-primary);
+      border-radius: var(--radius-full);
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      padding: var(--space-lg);
+    }
+
+    .tab-panel {
+      display: none;
+      animation: fadeIn var(--transition-default);
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-body {
+      padding: var(--space-lg);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-primary-hover);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      border-color: var(--border-default);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--border-strong);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+    }
+
+    .btn-lg {
+      padding: var(--space-md) var(--space-lg);
+      font-size: 1rem;
+    }
+
+    .btn-sm {
+      padding: var(--space-xs) var(--space-sm);
+      font-size: 0.75rem;
+    }
+
+    .btn-icon {
+      padding: var(--space-sm);
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: var(--space-md);
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: var(--space-xs);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: var(--space-sm) var(--space-md);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      color: var(--text-primary);
+      transition: all var(--transition-fast);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .form-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .form-textarea {
+      min-height: 200px;
+      resize: vertical;
+      font-family: var(--font-mono);
+      line-height: 1.6;
+    }
+
+    /* Search Bar */
+    .search-bar {
+      position: relative;
+    }
+
+    .search-bar svg {
+      position: absolute;
+      left: var(--space-md);
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--text-muted);
+    }
+
+    .search-bar input {
+      padding-left: 44px;
+    }
+
+    /* Filter Chips */
+    .filter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .filter-chip:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .filter-chip.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: white;
+    }
+
+    .filter-chip.danger.active {
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .filter-chip.warning.active {
+      background: var(--warning);
+      border-color: var(--warning);
+    }
+
+    /* Data Table */
+    .table-container {
+      overflow: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-elevated);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: var(--space-sm) var(--space-md);
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+
+    .data-table th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg-surface);
+      font-weight: 600;
+      color: var(--text-secondary);
+      user-select: none;
+    }
+
+    .data-table th.sortable {
+      cursor: pointer;
+    }
+
+    .data-table th.sortable:hover {
+      color: var(--text-primary);
+    }
+
+    .data-table th.sorted {
+      color: var(--accent-primary);
+    }
+
+    .data-table tbody tr {
+      transition: background var(--transition-fast);
+    }
+
+    .data-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .data-table .mono {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+    }
+
+    .data-table .truncate {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Expiry Badges */
+    .expiry-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: 2px var(--space-sm);
+      border-radius: var(--radius-full);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .expiry-badge.expired {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .expiry-badge.soon {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .expiry-badge.ok {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .expiry-badge.missing {
+      background: var(--bg-active);
+      color: var(--text-muted);
+    }
+
+    /* Match Type Badges */
+    .match-badge {
+      display: inline-block;
+      padding: 2px var(--space-sm);
+      border-radius: var(--radius-full);
+      font-size: 0.6875rem;
+      font-weight: 600;
+    }
+
+    .match-badge.exact {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .match-badge.last8 {
+      background: var(--info-bg);
+      color: var(--info);
+    }
+
+    .match-badge.seq6 {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .match-badge.api {
+      background: rgba(139, 92, 246, 0.12);
+      color: #8b5cf6;
+    }
+
+    .match-badge.none,
+    .match-badge.invalid {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .match-badge.ambiguous {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    /* Camera Scanner */
+    .scanner-container {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      aspect-ratio: 4/3;
+      background: var(--bg-deep);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .scanner-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .scanner-viewfinder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 70%;
+      max-width: 280px;
+      aspect-ratio: 3/2;
+      border: 2px solid var(--accent-primary);
+      border-radius: var(--radius-md);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+    }
+
+    .scanner-viewfinder::before,
+    .scanner-viewfinder::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--accent-primary);
+    }
+
+    .scanner-viewfinder::before {
+      top: -3px;
+      left: -3px;
+      border-right: none;
+      border-bottom: none;
+      border-radius: var(--radius-sm) 0 0 0;
+    }
+
+    .scanner-viewfinder::after {
+      bottom: -3px;
+      right: -3px;
+      border-left: none;
+      border-top: none;
+      border-radius: 0 0 var(--radius-sm) 0;
+    }
+
+    .scanner-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+      animation: scanLine 2s linear infinite;
+    }
+
+    @keyframes scanLine {
+      0% { top: 0; }
+      50% { top: calc(100% - 2px); }
+      100% { top: 0; }
+    }
+
+    .scanner-controls {
+      display: flex;
+      gap: var(--space-md);
+      margin-top: var(--space-lg);
+      justify-content: center;
+    }
+
+    /* File Upload Zone */
+    .upload-zone {
+      padding: var(--space-2xl);
+      border: 2px dashed var(--border-default);
+      border-radius: var(--radius-lg);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-default);
+    }
+
+    .upload-zone:hover {
+      border-color: var(--accent-primary);
+      background: var(--accent-glow);
+    }
+
+    .upload-zone.dragover {
+      border-color: var(--accent-primary);
+      background: var(--accent-glow);
+      transform: scale(1.02);
+    }
+
+    .upload-zone-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto var(--space-md);
+      color: var(--text-muted);
+    }
+
+    .upload-zone-text {
+      color: var(--text-secondary);
+    }
+
+    .upload-zone-text strong {
+      color: var(--accent-primary);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: var(--space-xs);
+    }
+
+    /* Empty State */
+    .empty-state {
+      padding: var(--space-2xl);
+      text-align: center;
+    }
+
+    .empty-state-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto var(--space-md);
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .empty-state-text {
+      color: var(--text-secondary);
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: var(--space-lg);
+      right: var(--space-lg);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-md);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      animation: slideIn var(--transition-default);
+    }
+
+    .toast.success {
+      border-color: var(--success);
+    }
+
+    .toast.error {
+      border-color: var(--danger);
+    }
+
+    .toast.warning {
+      border-color: var(--warning);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-md);
+      margin-bottom: var(--space-md);
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border-default);
+    }
+
+    .toolbar .search-bar {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-lg);
+      opacity: 0;
+      visibility: hidden;
+      transition: all var(--transition-default);
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow: auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95);
+      transition: transform var(--transition-default);
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: var(--space-lg);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: var(--space-lg);
+    }
+
+    .modal-footer {
+      padding: var(--space-md) var(--space-lg);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-sm);
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .pagination-info {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app-header {
+        padding: var(--space-sm) var(--space-md);
+      }
+
+      .nav-tabs {
+        padding: var(--space-sm) var(--space-md);
+      }
+
+      .main-content {
+        padding: var(--space-md);
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .toolbar .search-bar {
+        width: 100%;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .toast-container {
+        bottom: var(--space-md);
+        right: var(--space-md);
+        left: var(--space-md);
+      }
+
+      .toast {
+        width: 100%;
+      }
+    }
+
+    /* Virtual Scrolling Container */
+    .virtual-scroll-container {
+      height: 600px;
+      overflow: auto;
+    }
+
+    /* Keyboard Focus Styles */
+    *:focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: 2px;
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-default);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Action Buttons Row */
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    /* Recent Scans Preview */
+    .recent-scan {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      margin-top: var(--space-md);
+    }
+
+    .recent-scan-info {
+      flex: 1;
+    }
+
+    .recent-scan-gtin {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--text-primary);
+    }
+
+    .recent-scan-name {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: var(--space-xs);
+    }
+
+    /* Install Prompt */
+    .install-banner {
+      display: none;
+      padding: var(--space-md);
+      background: linear-gradient(135deg, var(--accent-primary), var(--info));
+      color: white;
+      text-align: center;
+    }
+
+    .install-banner.show {
+      display: block;
+    }
+
+    /* Last Updated */
+    .last-updated {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Install Banner -->
+    <div class="install-banner" id="installBanner">
+      <span>Install this app for offline use</span>
+      <button class="btn btn-secondary btn-sm" id="installBtn" style="margin-left: 12px;">Install</button>
+      <button class="btn btn-ghost btn-sm" id="dismissInstall" style="margin-left: 8px;">Dismiss</button>
+    </div>
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 5h2v14H3zM7 5h1v14H7zM11 5h2v14h-2zM15 5h1v14h-1zM19 5h2v14h-2z"/>
+            </svg>
+          </div>
+          <span class="logo-text">GS1 <span>Parser</span></span>
+        </div>
+        <div class="status-indicators">
+          <div class="status-badge" id="connectionStatus">
+            <span class="status-dot"></span>
+            <span>Online</span>
+          </div>
+          <div class="status-badge" id="masterStatus">
+            <span id="masterCount">0</span> Products
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab active" role="tab" data-tab="scan" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+          <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+          <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+          <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+          <line x1="7" y1="12" x2="17" y2="12"></line>
+        </svg>
+        Scan
+      </button>
+      <button class="nav-tab" role="tab" data-tab="bulk" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        Bulk Paste
+      </button>
+      <button class="nav-tab" role="tab" data-tab="history" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        History
+        <span class="tab-badge" id="historyCount">0</span>
+      </button>
+      <button class="nav-tab" role="tab" data-tab="master" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        Master Data
+      </button>
+      <button class="nav-tab" role="tab" data-tab="backup" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Backup
+      </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Scan Tab -->
+      <div class="tab-panel active" id="tab-scan" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Camera Scanner</h2>
+            <div class="action-row">
+              <label class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                Upload Image
+                <input type="file" accept="image/*" id="imageUpload" style="display: none;">
+              </label>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="scanner-container" id="scannerContainer">
+              <video class="scanner-video" id="scannerVideo" playsinline autoplay muted></video>
+              <div class="scanner-overlay" id="scannerOverlay">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                <p style="color: var(--text-secondary); margin-top: 16px;">Click Start to begin scanning</p>
+              </div>
+              <div class="scanner-viewfinder" id="viewfinder" style="display: none;">
+                <div class="scanner-line"></div>
+              </div>
+            </div>
+            
+            <div class="scanner-controls">
+              <button class="btn btn-primary btn-lg" id="startScanBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Start Scanning
+              </button>
+              <button class="btn btn-secondary btn-lg" id="stopScanBtn" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                  <rect x="6" y="6" width="12" height="12"></rect>
+                </svg>
+                Stop
+              </button>
+              <button class="btn btn-secondary" id="switchCameraBtn" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                  <path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"></path>
+                  <path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"></path>
+                  <polyline points="16 2 19 5 16 8"></polyline>
+                  <polyline points="8 22 5 19 8 16"></polyline>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Recent Scan Preview -->
+            <div class="recent-scan" id="recentScan" style="display: none;">
+              <div class="recent-scan-info">
+                <div class="recent-scan-gtin" id="recentGtin">-</div>
+                <div class="recent-scan-name" id="recentName">-</div>
+              </div>
+              <span class="expiry-badge ok" id="recentExpiry">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual Entry -->
+        <div class="card" style="margin-top: var(--space-lg);">
+          <div class="card-header">
+            <h2 class="card-title">Manual Entry</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Enter GS1 Barcode String</label>
+              <input type="text" class="form-input" id="manualInput" placeholder="(01)09504000012345(17)240531(10)ABC123">
+            </div>
+            <button class="btn btn-primary" id="manualAddBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add to History
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk Paste Tab -->
+      <div class="tab-panel" id="tab-bulk" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Bulk Paste Import</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Paste multiple GS1 barcode strings (one per line)</label>
+              <textarea class="form-input form-textarea" id="bulkInput" placeholder="(01)09504000012345(17)240531(10)ABC123
+(01)09504000067890(17)250115(10)XYZ789(21)SN001
+(01)09504000011111(17)241231(10)LOT001(30)100"></textarea>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-primary" id="processBulkBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <polyline points="9 11 12 14 22 4"></polyline>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                </svg>
+                Process All
+              </button>
+              <button class="btn btn-secondary" id="clearBulkBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: var(--space-lg);">
+          <div class="card-header">
+            <h2 class="card-title">Import Results</h2>
+          </div>
+          <div class="card-body">
+            <div class="stats-grid" id="bulkStats">
+              <div class="stat-card">
+                <div class="stat-value" id="bulkTotal">0</div>
+                <div class="stat-label">Total Lines</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="bulkValid" style="color: var(--success);">0</div>
+                <div class="stat-label">Valid</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="bulkInvalid" style="color: var(--danger);">0</div>
+                <div class="stat-label">Invalid</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="bulkMatched" style="color: var(--info);">0</div>
+                <div class="stat-label">Matched</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div class="tab-panel" id="tab-history" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Scan History</h2>
+            <div class="action-row">
+              <button class="btn btn-secondary btn-sm" id="exportTsvBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                TSV
+              </button>
+              <button class="btn btn-secondary btn-sm" id="exportCsvBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                CSV
+              </button>
+              <button class="btn btn-secondary btn-sm" id="copyLastBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy Last
+              </button>
+              <button class="btn btn-danger btn-sm" id="clearHistoryBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Clear
+              </button>
+            </div>
+          </div>
+          <div class="card-body" style="padding: var(--space-md);">
+            <!-- Toolbar -->
+            <div class="toolbar">
+              <div class="search-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="form-input" id="searchInput" placeholder="Search GTIN, product, batch, serial...">
+              </div>
+              <div class="toolbar-divider"></div>
+              <div class="filter-chips">
+                <button class="filter-chip danger" data-filter="expired" id="filterExpired">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                  </svg>
+                  Expired
+                </button>
+                <button class="filter-chip warning" data-filter="soon" id="filterSoon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                  Soon (≤30d)
+                </button>
+                <button class="filter-chip" data-filter="missing" id="filterMissing">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
+                  No Expiry
+                </button>
+              </div>
+              <div class="toolbar-divider"></div>
+              <div class="toolbar-group">
+                <select class="form-input" id="sortSelect" style="width: auto;">
+                  <option value="time-desc">Newest First</option>
+                  <option value="time-asc">Oldest First</option>
+                  <option value="expiry-asc">Expiry (Soonest)</option>
+                  <option value="expiry-desc">Expiry (Latest)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container virtual-scroll-container" id="tableContainer">
+              <table class="data-table" id="historyTable">
+                <thead>
+                  <tr>
+                    <th class="sortable" data-sort="time">Scan Time</th>
+                    <th>Raw</th>
+                    <th>GTIN14</th>
+                    <th>GTIN13</th>
+                    <th class="sortable" data-sort="expiry">Expiry</th>
+                    <th>Batch</th>
+                    <th>Serial</th>
+                    <th>Qty</th>
+                    <th>Product Name</th>
+                    <th>Match</th>
+                  </tr>
+                </thead>
+                <tbody id="historyBody">
+                  <!-- Dynamic rows will be inserted here -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+              <div class="pagination-info" id="paginationInfo">
+                Showing 0 of 0 entries
+              </div>
+              <div class="pagination-controls">
+                <button class="btn btn-ghost btn-sm" id="prevPageBtn" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <span class="pagination-info" id="pageIndicator">Page 1</span>
+                <button class="btn btn-ghost btn-sm" id="nextPageBtn" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State (shown when no history) -->
+        <div class="empty-state" id="historyEmpty" style="display: none;">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <h3 class="empty-state-title">No scan history yet</h3>
+          <p class="empty-state-text">Start scanning barcodes or paste them in bulk to see your history here.</p>
+        </div>
+      </div>
+
+      <!-- Master Data Tab -->
+      <div class="tab-panel" id="tab-master" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Product Master Data</h2>
+            <div class="action-row">
+              <button class="btn btn-danger btn-sm" id="clearMasterBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Clear Master
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value" id="masterTotalProducts">0</div>
+                <div class="stat-label">Total Products</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="masterUniqueGtins">0</div>
+                <div class="stat-label">Unique GTINs</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="masterLastUpdated">Never</div>
+                <div class="stat-label">Last Updated</div>
+              </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="upload-zone" id="masterUploadZone">
+              <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <p class="upload-zone-text">
+                <strong>Click to upload</strong> or drag and drop<br>
+                CSV or TSV file with GTIN and Product Name columns
+              </p>
+              <input type="file" id="masterFileInput" accept=".csv,.tsv,.txt" style="display: none;">
+            </div>
+
+            <div class="action-row" style="margin-top: var(--space-md);">
+              <button class="btn btn-secondary" id="appendMasterBtn" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Append to Master
+              </button>
+              <button class="btn btn-primary" id="replaceMasterBtn" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+                Replace Master
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master Data Preview -->
+        <div class="card" style="margin-top: var(--space-lg);">
+          <div class="card-header">
+            <h2 class="card-title">Data Preview</h2>
+            <div class="search-bar" style="max-width: 300px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" class="form-input" id="masterSearchInput" placeholder="Search master data...">
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="table-container" style="max-height: 400px;">
+              <table class="data-table" id="masterPreviewTable">
+                <thead>
+                  <tr>
+                    <th>GTIN</th>
+                    <th>Product Name</th>
+                  </tr>
+                </thead>
+                <tbody id="masterPreviewBody">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="masterEmpty">
+              <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+              <h3 class="empty-state-title">No master data loaded</h3>
+              <p class="empty-state-text">Upload a CSV/TSV file with product GTINs and names to enable automatic product matching.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup Tab -->
+      <div class="tab-panel" id="tab-backup" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Backup & Restore</h2>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+              Export all your data (history, master list, and settings) as a JSON file. You can restore this backup later to recover your data on any device.
+            </p>
+
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value" id="backupHistoryCount">0</div>
+                <div class="stat-label">History Entries</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="backupMasterCount">0</div>
+                <div class="stat-label">Master Products</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="backupSize">0 KB</div>
+                <div class="stat-label">Estimated Size</div>
+              </div>
+            </div>
+
+            <div class="action-row" style="margin-top: var(--space-lg);">
+              <button class="btn btn-primary btn-lg" id="backupBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download Backup
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: var(--space-lg);">
+          <div class="card-header">
+            <h2 class="card-title">Restore from Backup</h2>
+          </div>
+          <div class="card-body">
+            <div class="upload-zone" id="restoreUploadZone">
+              <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <p class="upload-zone-text">
+                <strong>Click to upload</strong> or drag and drop<br>
+                JSON backup file
+              </p>
+              <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
+            </div>
+
+            <div style="margin-top: var(--space-lg); padding: var(--space-md); background: var(--warning-bg); border-radius: var(--radius-md); border: 1px solid var(--warning);">
+              <p style="color: var(--warning); font-size: 0.875rem; display: flex; align-items: flex-start; gap: var(--space-sm);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="flex-shrink: 0; margin-top: 2px;">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span>Restoring a backup will replace all current data. Make sure to download a backup of your current data first if needed.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: var(--space-lg);">
+          <div class="card-header">
+            <h2 class="card-title">Clear All Data</h2>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--text-secondary); margin-bottom: var(--space-md);">
+              This will permanently delete all your scan history, master data, and settings. This action cannot be undone.
+            </p>
+            <button class="btn btn-danger" id="clearAllBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              Clear All Data
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="confirmTitle">Confirm Action</h3>
+        <button class="btn btn-ghost btn-icon" id="closeModalBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage">Are you sure you want to proceed?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelConfirmBtn">Cancel</button>
+        <button class="btn btn-danger" id="confirmActionBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
