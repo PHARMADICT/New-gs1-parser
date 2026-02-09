@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Pharmacy Inventory Management PWA">
+  <title>Pharmacy PWA - Unified Barcode Scanner</title>
+  
+  <style>
+    :root {
+      --primary-color: #2E75B6;
+      --success-color: #51CF66;
+      --warning-color: #FFA94D;
+      --danger-color: #FF6B6B;
+      --dark-color: #1F4E78;
+      --light-bg: #F8F9FA;
+      --border-color: #DEE2E6;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      color: var(--dark-color);
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #6c757d;
+      font-size: 14px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .scan-section {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .form-control {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: 'Courier New', monospace;
+      transition: border-color 0.3s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1e5a8e;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(46, 117, 182, 0.3);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+
+    .product-card {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 16px;
+    }
+
+    .product-card.new-product {
+      background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    }
+
+    .product-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .product-header h3 {
+      color: var(--dark-color);
+      font-size: 22px;
+    }
+
+    .format-badge {
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .format-badge.gs1_parenthesized {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .format-badge.gs1_full {
+      background: #cce5ff;
+      color: #004085;
+    }
+
+    .format-badge.gtin14 {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .format-badge.ean13, .format-badge.legacy12 {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .product-details {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-row .label {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .detail-row .value {
+      color: var(--dark-color);
+    }
+
+    .detail-row .value.code {
+      font-family: 'Courier New', monospace;
+      background: #f8f9fa;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .expired {
+      color: var(--danger-color);
+      font-weight: 600;
+    }
+
+    .short-expiry {
+      color: var(--warning-color);
+      font-weight: 600;
+    }
+
+    .medium-expiry {
+      color: #fcc419;
+      font-weight: 600;
+    }
+
+    .normal-expiry {
+      color: var(--success-color);
+      font-weight: 600;
+    }
+
+    .expiry-status {
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .product-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .alert-warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      color: #856404;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #495057;
+    }
+
+    select.form-control {
+      cursor: pointer;
+    }
+
+    .detected-info {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    .detected-info h4 {
+      color: var(--dark-color);
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: var(--dark-color);
+      color: white;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    tr:hover {
+      background: #f8f9fa;
+    }
+
+    .product-row {
+      transition: all 0.3s;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: #6c757d;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      background: white;
+      margin-left: 8px;
+    }
+
+    #loading-indicator {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 1001;
+    }
+
+    .toast-success {
+      border-left: 4px solid var(--success-color);
+    }
+
+    .toast-error {
+      border-left: 4px solid var(--danger-color);
+    }
+
+    .toast-info {
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .animate-slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-out {
+      animation: fadeOut 0.3s ease-out;
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+
+    .icon {
+      font-size: 18px;
+    }
+
+    @media (max-width: 768px) {
+      .scan-section {
+        flex-direction: column;
+      }
+
+      .product-actions {
+        flex-direction: column;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏥 Pharmacy Inventory System</h1>
+      <p class="subtitle">Unified Barcode Scanner - Supports GS1, GTIN-14, EAN-13, and Legacy Codes</p>
+    </header>
+
+    <div class="card">
+      <h2 style="margin-bottom: 16px; color: var(--dark-color);">📱 Scan Product</h2>
+      
+      <div class="scan-section">
+        <input 
+          type="text" 
+          id="barcode-input" 
+          class="form-control" 
+          placeholder="Scan or enter barcode manually..."
+          autofocus
+        >
+        <button id="scan-btn" class="btn btn-primary" data-haptic>
+          <span class="icon">📷</span> Camera Scan
+        </button>
+      </div>
+
+      <div id="product-info"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom: 16px; color: var(--dark-color);">📦 Inventory History</h2>
+      
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Product ID</th>
+              <th>Serial Number</th>
+              <th>Batch</th>
+              <th>Expiry Date</th>
+              <th>Format</th>
+              <th>Scanned At</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <tr><td colspan="6" class="empty-state">No scanned items yet. Start scanning!</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom: 16px; color: var(--dark-color);">ℹ️ Supported Barcode Formats</h2>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+        <div style="padding: 12px; background: #d4edda; border-radius: 8px;">
+          <strong>GS1 Full (Parenthesized)</strong>
+          <p style="font-size: 12px; margin-top: 4px; color: #155724;">
+            (01)GTIN(17)EXPIRY(10)BATCH(21)SERIAL
+          </p>
+        </div>
+        
+        <div style="padding: 12px; background: #cce5ff; border-radius: 8px;">
+          <strong>GS1 Full (Non-Parenthesized)</strong>
+          <p style="font-size: 12px; margin-top: 4px; color: #004085;">
+            01GTIN17EXPIRY10BATCH21SERIAL
+          </p>
+        </div>
+        
+        <div style="padding: 12px; background: #fff3cd; border-radius: 8px;">
+          <strong>GTIN-14</strong>
+          <p style="font-size: 12px; margin-top: 4px; color: #856404;">
+            14-digit product identifier
+          </p>
+        </div>
+        
+        <div style="padding: 12px; background: #f8d7da; border-radius: 8px;">
+          <strong>EAN-13 / Legacy 12-digit</strong>
+          <p style="font-size: 12px; margin-top: 4px; color: #721c24;">
+            Standard retail & legacy codes
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-indicator">
+    <div class="spinner"></div>
+    <p style="margin-top: 12px; color: #495057;">Processing...</p>
+  </div>
+
+  <script src="enhanced_pharmacy_app.js"></script>
+</body>
+</html>
