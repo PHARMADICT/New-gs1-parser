@@ -1,0 +1,65 @@
+{
+“name”: “Boots OasisMall”,
+“short_name”: “Boots OasisMall”,
+“description”: “Premium pharmacy app for scanning, searching, and managing your health needs.”,
+“start_url”: “/”,
+“display”: “standalone”,
+“orientation”: “portrait-primary”,
+“theme_color”: “#0f1419”,
+“background_color”: “#0f1419”,
+“scope”: “/”,
+“categories”: [“health”, “medical”, “shopping”],
+“lang”: “en”,
+“dir”: “ltr”,
+“icons”: [
+{
+“src”: “data:image/svg+xml,%3csvg xmlns=‘http://www.w3.org/2000/svg’ viewBox=‘0 0 192 192’%3e%3cdefs%3e%3clinearGradient id=‘grad’ x1=‘0%25’ y1=‘0%25’ x2=‘100%25’ y2=‘100%25’%3e%3cstop offset=‘0%25’ style=‘stop-color:%23164e7a’/%3e%3cstop offset=‘100%25’ style=‘stop-color:%232570a1’/%3e%3c/linearGradient%3e%3c/defs%3e%3crect width=‘192’ height=‘192’ rx=‘48’ fill=‘url(%23grad)’/%3e%3cpath d=‘M64 64h64v16H64zm16 32h32v32H80z’ fill=‘white’/%3e%3ccircle cx=‘96’ cy=‘48’ r=‘8’ fill=‘white’ opacity=‘0.8’/%3e%3ccircle cx=‘96’ cy=‘144’ r=‘8’ fill=‘white’ opacity=‘0.8’/%3e%3ccircle cx=‘48’ cy=‘96’ r=‘8’ fill=‘white’ opacity=‘0.8’/%3e%3ccircle cx=‘144’ cy=‘96’ r=‘8’ fill=‘white’ opacity=‘0.8’/%3e%3c/svg%3e”,
+“sizes”: “192x192”,
+“type”: “image/svg+xml”,
+“purpose”: “any maskable”
+},
+{
+“src”: “data:image/svg+xml,%3csvg xmlns=‘http://www.w3.org/2000/svg’ viewBox=‘0 0 512 512’%3e%3cdefs%3e%3clinearGradient id=‘grad’ x1=‘0%25’ y1=‘0%25’ x2=‘100%25’ y2=‘100%25’%3e%3cstop offset=‘0%25’ style=‘stop-color:%23164e7a’/%3e%3cstop offset=‘100%25’ style=‘stop-color:%232570a1’/%3e%3c/linearGradient%3e%3c/defs%3e%3crect width=‘512’ height=‘512’ rx=‘128’ fill=‘url(%23grad)’/%3e%3cpath d=‘M160 160h192v48H160zm48 96h96v96h-96z’ fill=‘white’/%3e%3ccircle cx=‘256’ cy=‘112’ r=‘24’ fill=‘white’ opacity=‘0.8’/%3e%3ccircle cx=‘256’ cy=‘400’ r=‘24’ fill=‘white’ opacity=‘0.8’/%3e%3ccircle cx=‘112’ cy=‘256’ r=‘24’ fill=‘white’ opacity=‘0.8’/%3e%3ccircle cx=‘400’ cy=‘256’ r=‘24’ fill=‘white’ opacity=‘0.8’/%3e%3c/svg%3e”,
+“sizes”: “512x512”,
+“type”: “image/svg+xml”,
+“purpose”: “any”
+}
+],
+“screenshots”: [
+{
+“src”: “data:image/svg+xml,%3csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘375’ height=‘812’ viewBox=‘0 0 375 812’%3e%3crect width=‘375’ height=‘812’ fill=’%230f1419’/%3e%3ctext x=‘187.5’ y=‘100’ text-anchor=‘middle’ fill=‘white’ font-size=‘24’ font-family=‘Arial’%3eOasis Pharmacy%3c/text%3e%3ctext x=‘187.5’ y=‘130’ text-anchor=‘middle’ fill=’%2394a3b8’ font-size=‘14’%3eOasis Mall Branch%3c/text%3e%3ctext x=‘187.5’ y=‘250’ text-anchor=‘middle’ fill=‘white’ font-size=‘32’ font-weight=‘bold’%3eFeel good. Shop smart.%3c/text%3e%3ctext x=‘187.5’ y=‘290’ text-anchor=‘middle’ fill=’%2394a3b8’ font-size=‘16’%3eSearch products and scan barcodes%3c/text%3e%3crect x=‘50’ y=‘320’ width=‘120’ height=‘48’ rx=‘12’ fill=’%233b82c4’/%3e%3ctext x=‘110’ y=‘348’ text-anchor=‘middle’ fill=‘white’ font-size=‘14’%3eScan Barcode%3c/text%3e%3crect x=‘200’ y=‘320’ width=‘120’ height=‘48’ rx=‘12’ fill=‘transparent’ stroke=’%23475569’/%3e%3ctext x=‘260’ y=‘348’ text-anchor=‘middle’ fill=‘white’ font-size=‘14’%3eSearch Products%3c/text%3e%3c/svg%3e”,
+“sizes”: “375x812”,
+“type”: “image/svg+xml”,
+“form_factor”: “narrow”
+}
+],
+“shortcuts”: [
+{
+“name”: “Scan Product”,
+“short_name”: “Scan”,
+“description”: “Quickly scan product barcodes”,
+“url”: “/?action=scan”,
+“icons”: [
+{
+“src”: “data:image/svg+xml,%3csvg xmlns=‘http://www.w3.org/2000/svg’ viewBox=‘0 0 96 96’%3e%3crect width=‘96’ height=‘96’ rx=‘24’ fill=’%23164e7a’/%3e%3ctext x=‘48’ y=‘60’ text-anchor=‘middle’ fill=‘white’ font-size=‘32’%3e📱%3c/text%3e%3c/svg%3e”,
+“sizes”: “96x96”,
+“type”: “image/svg+xml”
+}
+]
+},
+{
+“name”: “Search Products”,
+“short_name”: “Search”,
+“description”: “Find products and medications”,
+“url”: “/?action=search”,
+“icons”: [
+{
+“src”: “data:image/svg+xml,%3csvg xmlns=‘http://www.w3.org/2000/svg’ viewBox=‘0 0 96 96’%3e%3crect width=‘96’ height=‘96’ rx=‘24’ fill=’%23164e7a’/%3e%3ctext x=‘48’ y=‘60’ text-anchor=‘middle’ fill=‘white’ font-size=‘32’%3e🔍%3c/text%3e%3c/svg%3e”,
+“sizes”: “96x96”,
+“type”: “image/svg+xml”
+}
+]
+}
+],
+“prefer_related_applications”: false
+}
