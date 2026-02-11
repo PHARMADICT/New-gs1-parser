@@ -1576,6 +1576,16 @@ function requestPinThen(callback) {
   State.pinInput = '';
   updatePinDisplay();
   document.getElementById('pinModal')?.classList.add('active');
+  
+  // Focus hidden input for keyboard support
+  setTimeout(() => {
+    const hiddenInput = document.getElementById('pinHiddenInput');
+    if (hiddenInput) {
+      hiddenInput.value = '';
+      hiddenInput.focus();
+    }
+  }, 100);
+  
   Haptic.light();
 }
 
@@ -1583,6 +1593,10 @@ function closePinModal() {
   document.getElementById('pinModal')?.classList.remove('active');
   State.pinCallback = null;
   State.pinInput = '';
+  
+  // Clear hidden input
+  const hiddenInput = document.getElementById('pinHiddenInput');
+  if (hiddenInput) hiddenInput.value = '';
 }
 
 function handlePinKey(key) {
@@ -1596,29 +1610,62 @@ function handlePinKey(key) {
   if (key === 'delete') {
     State.pinInput = State.pinInput.slice(0, -1);
     updatePinDisplay();
+    syncHiddenInput();
+    return;
+  }
+  
+  // Enter key - verify PIN
+  if (key === 'enter') {
+    verifyPin();
     return;
   }
   
   if (State.pinInput.length < 4) {
     State.pinInput += key;
     updatePinDisplay();
+    syncHiddenInput();
     
+    // Auto-verify when 4 digits entered
     if (State.pinInput.length === 4) {
-      setTimeout(() => {
-        if (State.pinInput === CONFIG.PIN) {
-          Haptic.success();
-          State.lastPinTime = Date.now(); // Update PIN timestamp
-          const callback = State.pinCallback;
-          closePinModal();
-          if (callback) callback();
-        } else {
-          Haptic.error();
-          showPinError();
-          State.pinInput = '';
-          updatePinDisplay();
-        }
-      }, 200);
+      setTimeout(() => verifyPin(), 200);
     }
+  }
+}
+
+function verifyPin() {
+  if (State.pinInput.length === 0) return;
+  
+  if (State.pinInput === CONFIG.PIN) {
+    Haptic.success();
+    State.lastPinTime = Date.now();
+    const callback = State.pinCallback;
+    closePinModal();
+    if (callback) callback();
+  } else {
+    Haptic.error();
+    showPinError();
+    State.pinInput = '';
+    updatePinDisplay();
+    syncHiddenInput();
+  }
+}
+
+function syncHiddenInput() {
+  const hiddenInput = document.getElementById('pinHiddenInput');
+  if (hiddenInput) {
+    hiddenInput.value = State.pinInput;
+  }
+}
+
+function handleHiddenInputChange(value) {
+  // Only accept digits
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  State.pinInput = digits;
+  updatePinDisplay();
+  
+  // Auto-verify when 4 digits
+  if (digits.length === 4) {
+    setTimeout(() => verifyPin(), 200);
   }
 }
 
@@ -2122,6 +2169,28 @@ function initEventListeners() {
     key.addEventListener('click', () => {
       handlePinKey(key.dataset.key);
     });
+  });
+  
+  // Hidden input for keyboard PIN entry
+  const pinHiddenInput = document.getElementById('pinHiddenInput');
+  if (pinHiddenInput) {
+    pinHiddenInput.addEventListener('input', (e) => {
+      handleHiddenInputChange(e.target.value);
+    });
+    
+    pinHiddenInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        verifyPin();
+      } else if (e.key === 'Escape') {
+        closePinModal();
+      }
+    });
+  }
+  
+  // Allow tapping PIN display area to focus hidden input
+  document.getElementById('pinDisplay')?.addEventListener('click', () => {
+    document.getElementById('pinHiddenInput')?.focus();
   });
   
   // Edit modal
