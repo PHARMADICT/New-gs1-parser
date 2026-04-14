@@ -13,13 +13,13 @@ const STATIC_ASSETS = [
   '/app.js',
   '/manifest.json',
   '/favicon.ico',
-  '/icons/boots-icon-32.png',
-  '/icons/boots-icon-48.png',
-  '/icons/boots-icon-192.png',
-  '/icons/boots-icon-512.png',
-  '/icons/boots-apple-touch-152.png',
-  '/icons/boots-apple-touch-167.png',
-  '/icons/boots-apple-touch-180.png'
+  '/boots-icon-32.png',
+  '/boots-icon-48.png',
+  '/boots-icon-192.png',
+  '/boots-icon-512.png',
+  '/icon-152.png',
+  '/boots-apple-touch-167.png',
+  '/boots-apple-touch-180.png'
 ];
 
 // External resources to cache
